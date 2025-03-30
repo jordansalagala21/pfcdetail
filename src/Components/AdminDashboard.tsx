@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@mui/material/styles";
-import { db } from "../../FirebaseConfig";
+import { db } from "../firebaseConfig";
 import {
   Table,
   TableBody,

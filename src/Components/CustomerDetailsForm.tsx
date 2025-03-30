@@ -13,7 +13,7 @@ import {
   Divider,
   Chip,
 } from "@mui/material";
-import { db } from "../../FirebaseConfig";
+import { db } from "../firebaseConfig";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";

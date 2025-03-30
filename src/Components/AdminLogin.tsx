@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { Box, TextField, Button, Typography, Paper } from "@mui/material";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../FirebaseConfig"; // Ensure you have your Firebase config set up
+import { auth } from "../firebaseConfig"; // Ensure you have your Firebase config set up
 const AdminLogin: React.FC = () => {
   const [email, setEmail] = useState(""); // Changed from username to email
   const [password, setPassword] = useState("");

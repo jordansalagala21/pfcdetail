@@ -18,10 +18,12 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import LocalAtmIcon from "@mui/icons-material/LocalAtm";
+import EmailIcon from "@mui/icons-material/Email";
 
 interface FormData {
   name: string;
   phoneNumber: string;
+  email: string;
   service: string;
 }
 
@@ -37,11 +39,13 @@ const CustomerDetailsForm: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     phoneNumber: "",
+    email: "",
     service: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [emailError, setEmailError] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -51,6 +55,18 @@ const CustomerDetailsForm: React.FC = () => {
   ) => {
     const { name, value } = event.target;
     setFormData({ ...formData, [name]: value });
+
+    // Validate email in real-time
+    if (name === "email") {
+      const isValid = validateEmail(value);
+      setEmailError(value !== "" && !isValid);
+    }
+  };
+
+  const validateEmail = (email: string): boolean => {
+    // More comprehensive email regex pattern
+    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    return re.test(email);
   };
 
   const validateForm = (): boolean => {
@@ -62,27 +78,48 @@ const CustomerDetailsForm: React.FC = () => {
       setError("Phone number is required");
       return false;
     }
+    if (!formData.email) {
+      setError("Email address is required");
+      return false;
+    }
+    if (!validateEmail(formData.email)) {
+      setError("Please enter a valid email address (e.g., example@domain.com)");
+      setEmailError(true);
+      return false;
+    }
     if (!formData.service) {
       setError("Please select a service");
       return false;
     }
     setError("");
+    setEmailError(false);
     return true;
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!validateForm()) return;
+
+    // Prevent submission if email is invalid
+    if (emailError || !validateForm()) {
+      return;
+    }
 
     setLoading(true);
     try {
       await addDoc(collection(db, "customerEntries"), {
         ...formData,
         timestamp: serverTimestamp(),
+        status: "pending",
       });
       setSuccess(true);
-      setFormData({ name: "", phoneNumber: "", service: "" });
-      setTimeout(() => setSuccess(false), 3000);
+      setFormData({
+        name: "",
+        phoneNumber: "",
+        email: "",
+        service: "",
+      });
+      setError("");
+      setTimeout(() => setSuccess(false), 5000);
     } catch (error) {
       console.error("Error adding document: ", error);
       setError("Failed to submit details. Please try again.");
@@ -167,7 +204,13 @@ const CustomerDetailsForm: React.FC = () => {
 
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Details submitted successfully!
+            <Typography variant="body1" fontWeight="bold">
+              Request submitted successfully!
+            </Typography>
+            <Typography variant="body2" mt={1}>
+              You will receive a confirmation email at {formData.email} with
+              your booking details.
+            </Typography>
           </Alert>
         )}
 
@@ -182,6 +225,7 @@ const CustomerDetailsForm: React.FC = () => {
             required
             size="small"
             sx={{ mb: 2 }}
+            error={!!error && !formData.name.trim()}
           />
 
           <TextField
@@ -195,6 +239,31 @@ const CustomerDetailsForm: React.FC = () => {
             size="small"
             type="tel"
             sx={{ mb: 2 }}
+            error={!!error && !formData.phoneNumber.trim()}
+          />
+
+          <TextField
+            label="Email Address"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+            size="small"
+            type="email"
+            sx={{ mb: 2 }}
+            error={emailError || (!!error && !validateEmail(formData.email))}
+            helperText={
+              emailError || (!!error && !validateEmail(formData.email))
+                ? "Please enter a valid email address (e.g., example@domain.com)"
+                : ""
+            }
+            InputProps={{
+              endAdornment: (
+                <EmailIcon color={emailError ? "error" : "action"} />
+              ),
+            }}
           />
 
           <TextField
@@ -208,7 +277,11 @@ const CustomerDetailsForm: React.FC = () => {
             required
             size="small"
             sx={{ mb: 3 }}
+            error={!!error && !formData.service}
           >
+            <MenuItem value="" disabled>
+              Select a service
+            </MenuItem>
             {serviceOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
                 {option.label}
@@ -247,7 +320,7 @@ const CustomerDetailsForm: React.FC = () => {
             variant="contained"
             color="primary"
             fullWidth
-            disabled={loading}
+            disabled={loading || emailError}
             sx={{
               py: 1.5,
               mt: 1,
@@ -255,6 +328,10 @@ const CustomerDetailsForm: React.FC = () => {
               fontWeight: 600,
               textTransform: "none",
               borderRadius: 1,
+              boxShadow: theme.shadows[2],
+              "&:hover": {
+                boxShadow: theme.shadows[4],
+              },
             }}
           >
             {loading ? (
@@ -263,6 +340,15 @@ const CustomerDetailsForm: React.FC = () => {
               "Submit Request"
             )}
           </Button>
+
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            align="center"
+            sx={{ mt: 3 }}
+          >
+            We respect your privacy. Your information will not be shared.
+          </Typography>
         </Box>
       </Paper>
     </Container>

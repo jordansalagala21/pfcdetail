@@ -98,6 +98,7 @@ interface CustomerEntry {
   id: string;
   name: string;
   phoneNumber: string;
+  email: string; // Add this
   service: string;
   timestamp: { seconds: number; nanoseconds: number };
   cost?: number;
@@ -360,55 +361,65 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (selectedEntryId) {
-      try {
-        const entry = customerEntries.find((e) => e.id === selectedEntryId);
-        const totalPayment = (entry?.cost || 0) * 0.4;
-        const workerCount = editWorkers.length;
-        const paymentPerWorker =
-          workerCount > 0 ? totalPayment / workerCount : 0;
+    if (!selectedEntryId) return;
 
-        const payments: Record<string, number> = {};
-        editWorkers.forEach((workerId) => {
-          payments[workerId] = paymentPerWorker;
+    // Validate required fields
+    if (editCost === undefined || editCost <= 0) {
+      setError("Please enter a valid cost");
+      return;
+    }
+
+    if (editWorkers.length === 0) {
+      setError("Please assign at least one worker");
+      return;
+    }
+
+    try {
+      // Removed unused 'entry' variable
+      const totalPayment = (editCost || 0) * 0.4;
+      const workerCount = editWorkers.length;
+      const paymentPerWorker = workerCount > 0 ? totalPayment / workerCount : 0;
+
+      const payments: Record<string, number> = {};
+      editWorkers.forEach((workerId) => {
+        payments[workerId] = paymentPerWorker;
+      });
+
+      const updates = editWorkers.map(async (workerId) => {
+        const worker = workers.find((w) => w.id === workerId);
+        const currentAssignedJobs = worker?.assignedJobs || [];
+        let newAssignedJobs = [...currentAssignedJobs];
+
+        if (editStatus === "completed") {
+          newAssignedJobs = currentAssignedJobs.filter(
+            (id) => id !== selectedEntryId
+          );
+        } else if (!currentAssignedJobs.includes(selectedEntryId)) {
+          newAssignedJobs = [...currentAssignedJobs, selectedEntryId];
+        }
+
+        const newStatus = newAssignedJobs.length > 0 ? "working" : "available";
+
+        await updateDoc(doc(db, "workers", workerId), {
+          assignedJobs: newAssignedJobs,
+          currentStatus: newStatus,
         });
+      });
 
-        const updates = editWorkers.map(async (workerId) => {
-          const worker = workers.find((w) => w.id === workerId);
-          const currentAssignedJobs = worker?.assignedJobs || [];
-          let newAssignedJobs = [...currentAssignedJobs];
+      await Promise.all(updates);
 
-          if (editStatus === "completed") {
-            newAssignedJobs = currentAssignedJobs.filter(
-              (id) => id !== selectedEntryId
-            );
-          } else if (!currentAssignedJobs.includes(selectedEntryId)) {
-            newAssignedJobs = [...currentAssignedJobs, selectedEntryId];
-          }
+      await updateDoc(doc(db, "customerEntries", selectedEntryId), {
+        cost: editCost,
+        workers: editWorkers,
+        status: editStatus,
+        payments,
+      });
 
-          const newStatus =
-            newAssignedJobs.length > 0 ? "working" : "available";
-
-          await updateDoc(doc(db, "workers", workerId), {
-            assignedJobs: newAssignedJobs,
-            currentStatus: newStatus,
-          });
-        });
-
-        await Promise.all(updates);
-
-        await updateDoc(doc(db, "customerEntries", selectedEntryId), {
-          cost: editCost,
-          workers: editWorkers,
-          status: editStatus,
-          payments,
-        });
-
-        setOpenEditModal(false);
-      } catch (error) {
-        console.error("Error updating document: ", error);
-        setError("Failed to save changes");
-      }
+      setOpenEditModal(false);
+      setError(null);
+    } catch (error) {
+      console.error("Error updating document: ", error);
+      setError("Failed to save changes");
     }
   };
 
@@ -430,6 +441,7 @@ const AdminDashboard: React.FC = () => {
         email: "",
         phone: "",
       });
+      setError(null);
     } catch (error) {
       console.error("Error adding worker: ", error);
       setError("Failed to add worker");
@@ -932,6 +944,14 @@ const AdminDashboard: React.FC = () => {
                             ) : (
                               entry.phoneNumber
                             )}
+                            <br />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontSize: "0.8rem" }}
+                            >
+                              {entry.email ? entry.email : "No email provided"}
+                            </Typography>
                           </TableCell>
                           <TableCell
                             sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
@@ -1602,7 +1622,10 @@ const AdminDashboard: React.FC = () => {
         {/* Edit Appointment Modal */}
         <Dialog
           open={openEditModal}
-          onClose={() => setOpenEditModal(false)}
+          onClose={() => {
+            setOpenEditModal(false);
+            setError(null);
+          }}
           fullWidth
           maxWidth="sm"
           fullScreen={isMobile}
@@ -1610,6 +1633,11 @@ const AdminDashboard: React.FC = () => {
           <DialogTitle>Edit Appointment</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} sx={{ pt: 1 }}>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
               <TextField
                 label="Cost"
                 type="number"
@@ -1622,8 +1650,18 @@ const AdminDashboard: React.FC = () => {
                   ),
                 }}
                 size="small"
+                error={editCost !== undefined && editCost <= 0}
+                helperText={
+                  editCost !== undefined && editCost <= 0
+                    ? "Cost must be greater than 0"
+                    : ""
+                }
               />
-              <FormControl fullWidth size="small">
+              <FormControl
+                fullWidth
+                size="small"
+                error={editWorkers.length === 0}
+              >
                 <InputLabel>Workers</InputLabel>
                 <Select
                   multiple
@@ -1657,6 +1695,11 @@ const AdminDashboard: React.FC = () => {
                     </MenuItem>
                   ))}
                 </Select>
+                {editWorkers.length === 0 && (
+                  <Typography variant="caption" color="error">
+                    At least one worker must be assigned
+                  </Typography>
+                )}
               </FormControl>
               <TextField
                 select
@@ -1689,7 +1732,7 @@ const AdminDashboard: React.FC = () => {
                   </MenuItem>
                 ))}
               </TextField>
-              {editCost && editWorkers.length > 0 && (
+              {editCost && editCost > 0 && editWorkers.length > 0 && (
                 <Box
                   sx={{ p: 2, bgcolor: "background.paper", borderRadius: 1 }}
                 >
@@ -1718,7 +1761,10 @@ const AdminDashboard: React.FC = () => {
           </DialogContent>
           <DialogActions>
             <Button
-              onClick={() => setOpenEditModal(false)}
+              onClick={() => {
+                setOpenEditModal(false);
+                setError(null);
+              }}
               startIcon={<CloseIcon />}
               color="inherit"
               size="small"
@@ -1731,6 +1777,11 @@ const AdminDashboard: React.FC = () => {
               variant="contained"
               color="primary"
               size="small"
+              disabled={
+                editCost === undefined ||
+                editCost <= 0 ||
+                editWorkers.length === 0
+              }
             >
               Save Changes
             </Button>
@@ -1740,7 +1791,10 @@ const AdminDashboard: React.FC = () => {
         {/* Add Worker Modal */}
         <Dialog
           open={openWorkerModal}
-          onClose={() => setOpenWorkerModal(false)}
+          onClose={() => {
+            setOpenWorkerModal(false);
+            setError(null);
+          }}
           fullWidth
           maxWidth="sm"
           fullScreen={isMobile}
@@ -1748,6 +1802,11 @@ const AdminDashboard: React.FC = () => {
           <DialogTitle>Add New Worker</DialogTitle>
           <DialogContent dividers>
             <Stack spacing={2} sx={{ pt: 1 }}>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
               <TextField
                 label="Full Name"
                 fullWidth
@@ -1757,6 +1816,8 @@ const AdminDashboard: React.FC = () => {
                 }
                 required
                 size="small"
+                error={!newWorker.name}
+                helperText={!newWorker.name ? "Name is required" : ""}
               />
               <TextField
                 label="Email"
@@ -1781,7 +1842,10 @@ const AdminDashboard: React.FC = () => {
           </DialogContent>
           <DialogActions>
             <Button
-              onClick={() => setOpenWorkerModal(false)}
+              onClick={() => {
+                setOpenWorkerModal(false);
+                setError(null);
+              }}
               startIcon={<CloseIcon />}
               color="inherit"
               size="small"
@@ -1794,6 +1858,7 @@ const AdminDashboard: React.FC = () => {
               variant="contained"
               color="primary"
               size="small"
+              disabled={!newWorker.name}
             >
               Add Worker
             </Button>

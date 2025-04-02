@@ -98,7 +98,7 @@ interface CustomerEntry {
   id: string;
   name: string;
   phoneNumber: string;
-  email: string; // Add this
+  email: string;
   service: string;
   timestamp: { seconds: number; nanoseconds: number };
   cost?: number;
@@ -266,7 +266,6 @@ const AdminDashboard: React.FC = () => {
       analytics.dayOfWeekSales[dayOfWeek] =
         (analytics.dayOfWeekSales[dayOfWeek] || 0) + cost;
 
-      // Calculate worker earnings
       if (entry.payments) {
         Object.entries(entry.payments).forEach(([workerId, amount]) => {
           analytics.workerEarnings[workerId] =
@@ -305,7 +304,7 @@ const AdminDashboard: React.FC = () => {
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    return sortedWorkers.slice(0, 3); // Return top 3 performers
+    return sortedWorkers.slice(0, 3);
   }, [customerEntries, workers, timeframe]);
 
   // Prepare chart data
@@ -363,7 +362,6 @@ const AdminDashboard: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!selectedEntryId) return;
 
-    // Validate required fields
     if (editCost === undefined || editCost <= 0) {
       setError("Please enter a valid cost");
       return;
@@ -375,7 +373,6 @@ const AdminDashboard: React.FC = () => {
     }
 
     try {
-      // Removed unused 'entry' variable
       const totalPayment = (editCost || 0) * 0.4;
       const workerCount = editWorkers.length;
       const paymentPerWorker = workerCount > 0 ? totalPayment / workerCount : 0;
@@ -511,7 +508,7 @@ const AdminDashboard: React.FC = () => {
           selected={tabValue === 0}
           onClick={() => {
             setTabValue(0);
-            if (isMobile) setMobileOpen(false);
+            setMobileOpen(false);
           }}
         >
           <ListItemIcon>
@@ -523,7 +520,7 @@ const AdminDashboard: React.FC = () => {
           selected={tabValue === 1}
           onClick={() => {
             setTabValue(1);
-            if (isMobile) setMobileOpen(false);
+            setMobileOpen(false);
           }}
         >
           <ListItemIcon>
@@ -535,7 +532,7 @@ const AdminDashboard: React.FC = () => {
           selected={tabValue === 2}
           onClick={() => {
             setTabValue(2);
-            if (isMobile) setMobileOpen(false);
+            setMobileOpen(false);
           }}
         >
           <ListItemIcon>
@@ -567,21 +564,9 @@ const AdminDashboard: React.FC = () => {
           keepMounted: true,
         }}
         sx={{
-          display: { xs: "block", md: "none" },
+          display: { xs: "block", sm: "none" },
           "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
         }}
-      >
-        {drawer}
-      </Drawer>
-
-      {/* Permanent Drawer for Desktop */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: "none", md: "block" },
-          "& .MuiDrawer-paper": { boxSizing: "border-box", width: 240 },
-        }}
-        open
       >
         {drawer}
       </Drawer>
@@ -591,63 +576,63 @@ const AdminDashboard: React.FC = () => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - 240px)` },
+          width: "100%",
           backgroundColor: theme.palette.background.default,
         }}
       >
-        {/* Mobile Header */}
+        {/* Header */}
         <Box
           sx={{
-            display: { xs: "flex", md: "none" },
+            display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            mb: 2,
+            mb: 3,
           }}
         >
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2 }}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            Admin Dashboard
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {isMobile && (
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={handleDrawerToggle}
+                sx={{ mr: 2 }}
+              >
+                <MenuIcon />
+              </IconButton>
+            )}
+            <Typography
+              variant={isMobile ? "h6" : "h4"}
+              component="h1"
+              fontWeight="bold"
+            >
+              Admin Dashboard
+            </Typography>
+          </Box>
           <Button
             onClick={logout}
             variant="contained"
             color="error"
-            size="small"
+            size={isMobile ? "small" : "medium"}
             startIcon={<LogoutIcon />}
           >
             Logout
           </Button>
         </Box>
 
-        {/* Desktop Header */}
-        <Box sx={{ display: { xs: "none", md: "block" }, mb: 3 }}>
-          <Typography
-            variant="h4"
-            component="h1"
-            fontWeight="bold"
-            gutterBottom
-          >
-            Admin Dashboard
-          </Typography>
-          <Tabs
-            value={tabValue}
-            onChange={(_e, newValue) => setTabValue(newValue)}
-            sx={{ mb: 2 }}
-          >
-            <Tab label="Appointments" icon={<ScheduleIcon />} />
-            <Tab label="Worker Management" icon={<WorkIcon />} />
-            <Tab label="Analytics" icon={<BarChartIcon />} />
-          </Tabs>
-          <Divider />
-        </Box>
+        {/* Tabs */}
+        <Tabs
+          value={tabValue}
+          onChange={(_e, newValue) => setTabValue(newValue)}
+          sx={{ mb: 2 }}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+        >
+          <Tab label="Appointments" icon={<ScheduleIcon />} />
+          <Tab label="Worker Management" icon={<WorkIcon />} />
+          <Tab label="Analytics" icon={<BarChartIcon />} />
+        </Tabs>
+        <Divider />
 
         {/* Customer Retention Notification */}
         {inactiveCustomers.length > 0 && tabValue !== 2 && (

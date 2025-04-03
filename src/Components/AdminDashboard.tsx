@@ -98,7 +98,6 @@ interface CustomerEntry {
   id: string;
   name: string;
   phoneNumber: string;
-  email: string;
   service: string;
   timestamp: { seconds: number; nanoseconds: number };
   cost?: number;
@@ -929,14 +928,6 @@ const AdminDashboard: React.FC = () => {
                             ) : (
                               entry.phoneNumber
                             )}
-                            <br />
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ fontSize: "0.8rem" }}
-                            >
-                              {entry.email ? entry.email : "No email provided"}
-                            </Typography>
                           </TableCell>
                           <TableCell
                             sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}

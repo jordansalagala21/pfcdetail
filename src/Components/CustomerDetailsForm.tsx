@@ -1,4 +1,3 @@
-// src/components/CustomerDetailsForm.tsx
 import React, { useState } from "react";
 import {
   TextField,
@@ -18,12 +17,10 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import LocalAtmIcon from "@mui/icons-material/LocalAtm";
-import EmailIcon from "@mui/icons-material/Email";
 
 interface FormData {
   name: string;
   phoneNumber: string;
-  email: string;
   service: string;
 }
 
@@ -33,19 +30,18 @@ const serviceOptions = [
   { value: "interior", label: "Interior Detailing" },
   { value: "exterior", label: "Exterior Polish" },
   { value: "maintenance", label: "Maintenance Detailing" },
+  { value: "mobile", label: "Mobile Detailing Service" },
 ];
 
 const CustomerDetailsForm: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     phoneNumber: "",
-    email: "",
     service: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [emailError, setEmailError] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -55,18 +51,6 @@ const CustomerDetailsForm: React.FC = () => {
   ) => {
     const { name, value } = event.target;
     setFormData({ ...formData, [name]: value });
-
-    // Validate email in real-time
-    if (name === "email") {
-      const isValid = validateEmail(value);
-      setEmailError(value !== "" && !isValid);
-    }
-  };
-
-  const validateEmail = (email: string): boolean => {
-    // More comprehensive email regex pattern
-    const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    return re.test(email);
   };
 
   const validateForm = (): boolean => {
@@ -78,29 +62,18 @@ const CustomerDetailsForm: React.FC = () => {
       setError("Phone number is required");
       return false;
     }
-    if (!formData.email) {
-      setError("Email address is required");
-      return false;
-    }
-    if (!validateEmail(formData.email)) {
-      setError("Please enter a valid email address (e.g., example@domain.com)");
-      setEmailError(true);
-      return false;
-    }
     if (!formData.service) {
       setError("Please select a service");
       return false;
     }
     setError("");
-    setEmailError(false);
     return true;
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    // Prevent submission if email is invalid
-    if (emailError || !validateForm()) {
+    if (!validateForm()) {
       return;
     }
 
@@ -115,7 +88,6 @@ const CustomerDetailsForm: React.FC = () => {
       setFormData({
         name: "",
         phoneNumber: "",
-        email: "",
         service: "",
       });
       setError("");
@@ -208,8 +180,7 @@ const CustomerDetailsForm: React.FC = () => {
               Request submitted successfully!
             </Typography>
             <Typography variant="body2" mt={1}>
-              You will receive a confirmation email at {formData.email} with
-              your booking details.
+              Your booking details have been recorded successfully.
             </Typography>
           </Alert>
         )}
@@ -240,30 +211,6 @@ const CustomerDetailsForm: React.FC = () => {
             type="tel"
             sx={{ mb: 2 }}
             error={!!error && !formData.phoneNumber.trim()}
-          />
-
-          <TextField
-            label="Email Address"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            fullWidth
-            margin="normal"
-            required
-            size="small"
-            type="email"
-            sx={{ mb: 2 }}
-            error={emailError || (!!error && !validateEmail(formData.email))}
-            helperText={
-              emailError || (!!error && !validateEmail(formData.email))
-                ? "Please enter a valid email address (e.g., example@domain.com)"
-                : ""
-            }
-            InputProps={{
-              endAdornment: (
-                <EmailIcon color={emailError ? "error" : "action"} />
-              ),
-            }}
           />
 
           <TextField
@@ -320,7 +267,7 @@ const CustomerDetailsForm: React.FC = () => {
             variant="contained"
             color="primary"
             fullWidth
-            disabled={loading || emailError}
+            disabled={loading}
             sx={{
               py: 1.5,
               mt: 1,

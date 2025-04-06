@@ -62,6 +62,7 @@ import {
   Person as PersonIcon,
   Star as StarIcon,
   TrendingUp as TrendingUpIcon,
+  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import {
   collection,
@@ -69,6 +70,7 @@ import {
   doc,
   updateDoc,
   addDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { Bar, Pie } from "react-chartjs-2";
 import {
@@ -141,8 +143,11 @@ const AdminDashboard: React.FC = () => {
     name: "",
     email: "",
     phone: "",
+    currentStatus: "available",
   });
+  const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
   const [timeframe, setTimeframe] = useState<"week" | "month">("week");
+  const [workerSearchTerm, setWorkerSearchTerm] = useState("");
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -172,6 +177,7 @@ const AdminDashboard: React.FC = () => {
           id: doc.id,
           ...doc.data(),
           assignedJobs: doc.data().assignedJobs || [],
+          currentStatus: doc.data().currentStatus || "available",
         })) as Worker[];
         setWorkers(workerData);
         setAvailableWorkers(
@@ -208,34 +214,53 @@ const AdminDashboard: React.FC = () => {
   }, 0);
 
   // Customer retention analysis
+  // Customer retention analysis - updated version
   const inactiveCustomers = useMemo(() => {
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-    const customerMap = new Map<string, CustomerEntry[]>();
+    // Group entries by phone number
+    interface CustomerEntryWithDate extends CustomerEntry {
+      jsDate: Date;
+    }
+
+    const customerMap = new Map<string, CustomerEntryWithDate[]>();
 
     customerEntries.forEach((entry) => {
+      // Convert Firestore timestamp to JavaScript Date
+      const entryDate = new Date(entry.timestamp.seconds * 1000);
       const entries = customerMap.get(entry.phoneNumber) || [];
-      entries.push(entry);
+      entries.push({ ...entry, jsDate: entryDate });
       customerMap.set(entry.phoneNumber, entries);
     });
 
-    const inactive: { name: string; phone: string; lastVisit: Date }[] = [];
+    const inactive: {
+      name: string;
+      phone: string;
+      lastVisit: Date;
+      totalVisits: number;
+    }[] = [];
 
     customerMap.forEach((entries, phone) => {
-      if (entries.length > 1) {
-        const lastVisit = new Date(
-          Math.max(...entries.map((e) => e.timestamp.seconds * 1000))
-        );
-        if (lastVisit < twoWeeksAgo) {
-          inactive.push({
-            name: entries[0].name,
-            phone,
-            lastVisit,
-          });
-        }
+      // Sort entries by date (newest first)
+      entries.sort((a, b) => b.jsDate.getTime() - a.jsDate.getTime());
+
+      const lastVisit = entries[0].jsDate;
+      const totalVisits = entries.length;
+
+      // Consider inactive if last visit was more than 2 weeks ago
+      if (lastVisit < twoWeeksAgo) {
+        inactive.push({
+          name: entries[0].name,
+          phone,
+          lastVisit,
+          totalVisits,
+        });
       }
     });
+
+    // Sort inactive customers by how long ago they visited (oldest first)
+    inactive.sort((a, b) => a.lastVisit.getTime() - b.lastVisit.getTime());
 
     return inactive;
   }, [customerEntries]);
@@ -305,6 +330,13 @@ const AdminDashboard: React.FC = () => {
 
     return sortedWorkers.slice(0, 3);
   }, [customerEntries, workers, timeframe]);
+
+  // Filter workers
+  const filteredWorkers = useMemo(() => {
+    return workers.filter((worker) =>
+      worker.name.toLowerCase().includes(workerSearchTerm.toLowerCase())
+    );
+  }, [workers, workerSearchTerm]);
 
   // Prepare chart data
   const monthlySalesData = {
@@ -436,11 +468,52 @@ const AdminDashboard: React.FC = () => {
         name: "",
         email: "",
         phone: "",
+        currentStatus: "available",
       });
       setError(null);
     } catch (error) {
       console.error("Error adding worker: ", error);
       setError("Failed to add worker");
+    }
+  };
+
+  const handleUpdateWorker = async () => {
+    if (!editingWorker) return;
+
+    try {
+      if (!editingWorker.name) {
+        setError("Worker name is required");
+        return;
+      }
+
+      await updateDoc(doc(db, "workers", editingWorker.id), {
+        name: editingWorker.name,
+        email: editingWorker.email,
+        phone: editingWorker.phone,
+        currentStatus: editingWorker.currentStatus,
+      });
+
+      setEditingWorker(null);
+      setError(null);
+    } catch (error) {
+      console.error("Error updating worker: ", error);
+      setError("Failed to update worker");
+    }
+  };
+
+  const handleDeleteWorker = async (workerId: string) => {
+    try {
+      // Check if worker has any assigned jobs
+      const worker = workers.find((w) => w.id === workerId);
+      if (worker?.assignedJobs && worker.assignedJobs.length > 0) {
+        setError("Cannot delete worker with assigned jobs");
+        return;
+      }
+
+      await deleteDoc(doc(db, "workers", workerId));
+    } catch (error) {
+      console.error("Error deleting worker: ", error);
+      setError("Failed to delete worker");
     }
   };
 
@@ -1069,15 +1142,39 @@ const AdminDashboard: React.FC = () => {
               }}
             >
               <Typography variant="h6">Worker Management</Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setOpenWorkerModal(true)}
-                size={isMobile ? "small" : "medium"}
-                sx={{ height: isMobile ? 36 : 40 }}
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  width: isMobile ? "100%" : "auto",
+                }}
               >
-                Add Worker
-              </Button>
+                <TextField
+                  size="small"
+                  placeholder="Search workers..."
+                  variant="outlined"
+                  value={workerSearchTerm}
+                  onChange={(e) => setWorkerSearchTerm(e.target.value)}
+                  InputProps={{
+                    startAdornment: <SearchIcon fontSize="small" />,
+                  }}
+                  sx={{
+                    width: isMobile ? "100%" : 200,
+                    "& .MuiInputBase-root": {
+                      height: 36,
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setOpenWorkerModal(true)}
+                  size={isMobile ? "small" : "medium"}
+                  sx={{ height: isMobile ? 36 : 40 }}
+                >
+                  Add Worker
+                </Button>
+              </Box>
             </Box>
             <TableContainer>
               <Table size={isMobile ? "small" : "medium"}>
@@ -1109,10 +1206,16 @@ const AdminDashboard: React.FC = () => {
                     >
                       Earnings
                     </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
+                    >
+                      Actions
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {workers.map((worker) => {
+                  {filteredWorkers.map((worker) => {
                     const assignedJobs = worker.assignedJobs?.length || 0;
                     const totalEarnings = customerEntries.reduce(
                       (sum, entry) => {
@@ -1122,7 +1225,7 @@ const AdminDashboard: React.FC = () => {
                     );
 
                     return (
-                      <TableRow key={worker.id}>
+                      <TableRow key={worker.id} hover>
                         <TableCell
                           sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
                         >
@@ -1233,6 +1336,29 @@ const AdminDashboard: React.FC = () => {
                         >
                           <Typography>${totalEarnings.toFixed(2)}</Typography>
                         </TableCell>
+                        <TableCell
+                          align="right"
+                          sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
+                        >
+                          <IconButton
+                            onClick={() => setEditingWorker(worker)}
+                            size="small"
+                            sx={{ p: 0.5 }}
+                          >
+                            <EditIcon color="primary" fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleDeleteWorker(worker.id)}
+                            size="small"
+                            sx={{ p: 0.5, ml: 1 }}
+                            disabled={assignedJobs > 0}
+                          >
+                            <DeleteIcon
+                              color={assignedJobs > 0 ? "disabled" : "error"}
+                              fontSize="small"
+                            />
+                          </IconButton>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -1339,78 +1465,64 @@ const AdminDashboard: React.FC = () => {
             </Paper>
 
             {/* Customer Retention Section */}
+            {/* Customer Retention Section */}
             <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 <NotificationsIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-                Customer Retention
+                Customer Retention (Haven't Visited in 2 Weeks)
               </Typography>
               {inactiveCustomers.length > 0 ? (
                 <>
                   <Typography color="text.secondary" sx={{ mb: 2 }}>
-                    The following customers haven't visited in 2 weeks:
+                    {inactiveCustomers.length} customers haven't visited in 2
+                    weeks or more.
                   </Typography>
                   <TableContainer>
                     <Table size={isMobile ? "small" : "medium"}>
                       <TableHead>
                         <TableRow>
-                          <TableCell
-                            sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
-                          >
-                            Customer Name
-                          </TableCell>
-                          <TableCell
-                            sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
-                          >
-                            Phone Number
-                          </TableCell>
-                          {!isMobile && (
-                            <TableCell sx={{ fontSize: "0.875rem" }}>
-                              Last Visit
-                            </TableCell>
-                          )}
+                          <TableCell>Customer Name</TableCell>
+                          <TableCell>Phone Number</TableCell>
+                          {!isMobile && <TableCell>Last Visit</TableCell>}
+                          {!isMobile && <TableCell>Days Since Visit</TableCell>}
+                          <TableCell>Total Visits</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {inactiveCustomers.map((customer, index) => (
-                          <TableRow key={index}>
-                            <TableCell
-                              sx={{
-                                fontSize: isMobile ? "0.75rem" : "0.875rem",
-                              }}
-                            >
-                              {customer.name}
-                            </TableCell>
-                            <TableCell
-                              sx={{
-                                fontSize: isMobile ? "0.75rem" : "0.875rem",
-                              }}
-                            >
-                              {isMobile ? (
-                                <Typography
-                                  variant="body2"
-                                  sx={{ fontSize: "0.75rem" }}
-                                >
-                                  {customer.phone.substring(0, 4)}...
-                                </Typography>
-                              ) : (
-                                customer.phone
-                              )}
-                            </TableCell>
-                            {!isMobile && (
-                              <TableCell sx={{ fontSize: "0.875rem" }}>
-                                {customer.lastVisit.toLocaleDateString()}
+                        {inactiveCustomers.map((customer, index) => {
+                          const daysSinceVisit = Math.floor(
+                            (new Date().getTime() -
+                              customer.lastVisit.getTime()) /
+                              (1000 * 60 * 60 * 24)
+                          );
+
+                          return (
+                            <TableRow key={index}>
+                              <TableCell>{customer.name}</TableCell>
+                              <TableCell>
+                                {isMobile
+                                  ? `${customer.phone.substring(0, 4)}...`
+                                  : customer.phone}
                               </TableCell>
-                            )}
-                          </TableRow>
-                        ))}
+                              {!isMobile && (
+                                <TableCell>
+                                  {customer.lastVisit.toLocaleDateString()}
+                                </TableCell>
+                              )}
+                              {!isMobile && (
+                                <TableCell>{daysSinceVisit} days</TableCell>
+                              )}
+                              <TableCell>{customer.totalVisits}</TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableContainer>
                 </>
               ) : (
                 <Typography color="text.secondary">
-                  No inactive customers to show. All customers have visited
-                  recently.
+                  All customers have visited recently. Great job!
                 </Typography>
               )}
             </Paper>
@@ -1814,6 +1926,26 @@ const AdminDashboard: React.FC = () => {
                 }
                 size="small"
               />
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={newWorker.currentStatus}
+                  onChange={(e) =>
+                    setNewWorker({
+                      ...newWorker,
+                      currentStatus: e.target.value as
+                        | "available"
+                        | "working"
+                        | "on-break",
+                    })
+                  }
+                  label="Status"
+                >
+                  <MenuItem value="available">Available</MenuItem>
+                  <MenuItem value="working">Working</MenuItem>
+                  <MenuItem value="on-break">On Break</MenuItem>
+                </Select>
+              </FormControl>
             </Stack>
           </DialogContent>
           <DialogActions>
@@ -1837,6 +1969,112 @@ const AdminDashboard: React.FC = () => {
               disabled={!newWorker.name}
             >
               Add Worker
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Edit Worker Modal */}
+        <Dialog
+          open={!!editingWorker}
+          onClose={() => {
+            setEditingWorker(null);
+            setError(null);
+          }}
+          fullWidth
+          maxWidth="sm"
+          fullScreen={isMobile}
+        >
+          <DialogTitle>Edit Worker</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+              <TextField
+                label="Full Name"
+                fullWidth
+                value={editingWorker?.name || ""}
+                onChange={(e) =>
+                  setEditingWorker({
+                    ...(editingWorker as Worker),
+                    name: e.target.value,
+                  })
+                }
+                required
+                size="small"
+                error={!editingWorker?.name}
+                helperText={!editingWorker?.name ? "Name is required" : ""}
+              />
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                value={editingWorker?.email || ""}
+                onChange={(e) =>
+                  setEditingWorker({
+                    ...(editingWorker as Worker),
+                    email: e.target.value,
+                  })
+                }
+                size="small"
+              />
+              <TextField
+                label="Phone Number"
+                fullWidth
+                value={editingWorker?.phone || ""}
+                onChange={(e) =>
+                  setEditingWorker({
+                    ...(editingWorker as Worker),
+                    phone: e.target.value,
+                  })
+                }
+                size="small"
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Status</InputLabel>
+                <Select
+                  value={editingWorker?.currentStatus || "available"}
+                  onChange={(e) =>
+                    setEditingWorker({
+                      ...(editingWorker as Worker),
+                      currentStatus: e.target.value as
+                        | "available"
+                        | "working"
+                        | "on-break",
+                    })
+                  }
+                  label="Status"
+                >
+                  <MenuItem value="available">Available</MenuItem>
+                  <MenuItem value="working">Working</MenuItem>
+                  <MenuItem value="on-break">On Break</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => {
+                setEditingWorker(null);
+                setError(null);
+              }}
+              startIcon={<CloseIcon />}
+              color="inherit"
+              size="small"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateWorker}
+              startIcon={<CheckIcon />}
+              variant="contained"
+              color="primary"
+              size="small"
+              disabled={!editingWorker?.name}
+            >
+              Save Changes
             </Button>
           </DialogActions>
         </Dialog>

@@ -22,6 +22,7 @@ interface FormData {
   name: string;
   phoneNumber: string;
   service: string;
+  carDetails: string;
 }
 
 const serviceOptions = [
@@ -38,6 +39,7 @@ const CustomerDetailsForm: React.FC = () => {
     name: "",
     phoneNumber: "",
     service: "",
+    carDetails: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -66,6 +68,10 @@ const CustomerDetailsForm: React.FC = () => {
       setError("Please select a service");
       return false;
     }
+    if (!formData.carDetails.trim()) {
+      setError("Car make and model are required");
+      return false;
+    }
     setError("");
     return true;
   };
@@ -89,6 +95,7 @@ const CustomerDetailsForm: React.FC = () => {
         name: "",
         phoneNumber: "",
         service: "",
+        carDetails: "",
       });
       setError("");
       setTimeout(() => setSuccess(false), 5000);
@@ -121,7 +128,6 @@ const CustomerDetailsForm: React.FC = () => {
           position: "relative",
         }}
       >
-        {/* Floating Discount Badge */}
         <Chip
           icon={<LocalAtmIcon />}
           label="10% CASH DISCOUNT"
@@ -151,7 +157,6 @@ const CustomerDetailsForm: React.FC = () => {
           Car Detailing Service Request
         </Typography>
 
-        {/* Special Offer Divider */}
         <Divider
           sx={{
             mb: 3,
@@ -214,6 +219,20 @@ const CustomerDetailsForm: React.FC = () => {
           />
 
           <TextField
+            label="Car Make and Model"
+            name="carDetails"
+            value={formData.carDetails}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+            size="small"
+            sx={{ mb: 2 }}
+            error={!!error && !formData.carDetails.trim()}
+            placeholder="e.g., Toyota Camry"
+          />
+
+          <TextField
             select
             label="Service Required"
             name="service"
@@ -236,7 +255,6 @@ const CustomerDetailsForm: React.FC = () => {
             ))}
           </TextField>
 
-          {/* Discount Highlight Box */}
           <Box
             sx={{
               backgroundColor: theme.palette.success.light,

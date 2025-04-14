@@ -101,6 +101,7 @@ interface CustomerEntry {
   name: string;
   phoneNumber: string;
   service: string;
+  carDetails?: string; // Added for make and model
   timestamp: { seconds: number; nanoseconds: number };
   cost?: number;
   workers?: string[];
@@ -137,6 +138,7 @@ const AdminDashboard: React.FC = () => {
   const [editCost, setEditCost] = useState<number | undefined>(undefined);
   const [editWorkers, setEditWorkers] = useState<string[]>([]);
   const [editStatus, setEditStatus] = useState<string>("pending");
+  const [editCarDetails, setEditCarDetails] = useState<string>(""); // New state for carDetails
   const [availableWorkers, setAvailableWorkers] = useState<Worker[]>([]);
   const [tabValue, setTabValue] = useState(0);
   const [newWorker, setNewWorker] = useState<Omit<Worker, "id">>({
@@ -214,7 +216,6 @@ const AdminDashboard: React.FC = () => {
   }, 0);
 
   // Customer retention analysis
-  // Customer retention analysis - updated version
   const inactiveCustomers = useMemo(() => {
     const twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
@@ -441,6 +442,7 @@ const AdminDashboard: React.FC = () => {
         workers: editWorkers,
         status: editStatus,
         payments,
+        carDetails: editCarDetails, // Save carDetails
       });
 
       setOpenEditModal(false);
@@ -903,6 +905,7 @@ const AdminDashboard: React.FC = () => {
                       {[
                         "Customer",
                         "Service",
+                        "Car Details",
                         "Contact",
                         "Date",
                         "Status",
@@ -987,6 +990,11 @@ const AdminDashboard: React.FC = () => {
                                 height: 24,
                               }}
                             />
+                          </TableCell>
+                          <TableCell
+                            sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
+                          >
+                            {entry.carDetails || "Not Provided"}
                           </TableCell>
                           <TableCell
                             sx={{ fontSize: isMobile ? "0.75rem" : "0.875rem" }}
@@ -1090,6 +1098,7 @@ const AdminDashboard: React.FC = () => {
                                 setEditCost(entry.cost);
                                 setEditWorkers(entry.workers || []);
                                 setEditStatus(entry.status || "pending");
+                                setEditCarDetails(entry.carDetails || ""); // Initialize carDetails
                                 setOpenEditModal(true);
                               }}
                               size="small"
@@ -1465,7 +1474,6 @@ const AdminDashboard: React.FC = () => {
             </Paper>
 
             {/* Customer Retention Section */}
-            {/* Customer Retention Section */}
             <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
               <Typography variant="h6" gutterBottom>
                 <NotificationsIcon sx={{ verticalAlign: "middle", mr: 1 }} />
@@ -1726,6 +1734,14 @@ const AdminDashboard: React.FC = () => {
                   {error}
                 </Alert>
               )}
+              <TextField
+                label="Car Make and Model"
+                fullWidth
+                value={editCarDetails}
+                onChange={(e) => setEditCarDetails(e.target.value)}
+                size="small"
+                placeholder="e.g., Toyota Camry"
+              />
               <TextField
                 label="Cost"
                 type="number"

@@ -931,6 +931,7 @@ const AdminDashboard: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {filteredEntries
+                      .sort((a, b) => b.timestamp.seconds - a.timestamp.seconds) // Sort by timestamp (newest first)
                       .slice(
                         page * rowsPerPage,
                         page * rowsPerPage + rowsPerPage

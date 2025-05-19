@@ -709,13 +709,97 @@ const AdminDashboard: React.FC = () => {
         <Tabs
           value={tabValue}
           onChange={(_e, newValue) => setTabValue(newValue)}
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 3,
+            bgcolor: "grey.50",
+            borderRadius: 1.5,
+            p: 0.5,
+            "& .MuiTabs-indicator": {
+              height: 3,
+              backgroundColor: "primary.main",
+              borderRadius: 2,
+            },
+          }}
           variant={isMobile ? "scrollable" : "standard"}
           scrollButtons={isMobile ? "auto" : false}
+          TabIndicatorProps={{
+            sx: {
+              transition: "all 0.3s ease-in-out",
+            },
+          }}
         >
-          <Tab label="Appointments" icon={<ScheduleIcon />} />
-          <Tab label="Worker Management" icon={<WorkIcon />} />
-          <Tab label="Analytics" icon={<BarChartIcon />} />
+          <Tab
+            label="Appointments"
+            icon={<ScheduleIcon />}
+            iconPosition="start"
+            sx={{
+              textTransform: "none",
+              fontWeight: 500,
+              fontSize: isMobile ? "0.8rem" : "0.9rem",
+              color: "text.secondary",
+              px: isMobile ? 2 : 3,
+              py: 1.5,
+              borderRadius: 1,
+              transition: "all 0.2s ease-in-out",
+              "&.Mui-selected": {
+                color: "primary.main",
+                bgcolor: "background.paper",
+                boxShadow: (theme) => theme.shadows[2],
+              },
+              "&:hover": {
+                bgcolor: "action.hover",
+                transform: "translateY(-2px)",
+              },
+            }}
+          />
+          <Tab
+            label="Worker Management"
+            icon={<WorkIcon />}
+            iconPosition="start"
+            sx={{
+              textTransform: "none",
+              fontWeight: 500,
+              fontSize: isMobile ? "0.8rem" : "0.9rem",
+              color: "text.secondary",
+              px: isMobile ? 2 : 3,
+              py: 1.5,
+              borderRadius: 1,
+              transition: "all 0.2s ease-in-out",
+              "&.Mui-selected": {
+                color: "primary.main",
+                bgcolor: "background.paper",
+                boxShadow: (theme) => theme.shadows[2],
+              },
+              "&:hover": {
+                bgcolor: "action.hover",
+                transform: "translateY(-2px)",
+              },
+            }}
+          />
+          <Tab
+            label="Analytics"
+            icon={<BarChartIcon />}
+            iconPosition="start"
+            sx={{
+              textTransform: "none",
+              fontWeight: 500,
+              fontSize: isMobile ? "0.8rem" : "0.9rem",
+              color: "text.secondary",
+              px: isMobile ? 2 : 3,
+              py: 1.5,
+              borderRadius: 1,
+              transition: "all 0.2s ease-in-out",
+              "&.Mui-selected": {
+                color: "primary.main",
+                bgcolor: "background.paper",
+                boxShadow: (theme) => theme.shadows[2],
+              },
+              "&:hover": {
+                bgcolor: "action.hover",
+                transform: "translateY(-2px)",
+              },
+            }}
+          />
         </Tabs>
         <Divider />
 
@@ -723,20 +807,52 @@ const AdminDashboard: React.FC = () => {
         {inactiveCustomers.length > 0 && tabValue !== 2 && (
           <Alert
             severity="warning"
-            icon={<NotificationsIcon />}
-            sx={{ mb: 3 }}
+            icon={
+              <NotificationsIcon sx={{ fontSize: 24, color: "warning.main" }} />
+            }
+            sx={{
+              mb: 4,
+              borderRadius: 1.5,
+              bgcolor: "warning.light",
+              color: "text.primary",
+              boxShadow: (theme) => theme.shadows[2],
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                boxShadow: (theme) => theme.shadows[4],
+                transform: "translateY(-2px)",
+              },
+              "& .MuiAlert-message": {
+                fontWeight: 500,
+                fontSize: isMobile ? "0.85rem" : "0.9rem",
+              },
+              "& .MuiAlert-icon": {
+                alignItems: "center",
+              },
+            }}
             action={
               <Button
                 color="inherit"
                 size="small"
                 onClick={() => setTabValue(2)}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  bgcolor: "warning.main",
+                  color: "white",
+                  px: 2,
+                  borderRadius: 1,
+                  "&:hover": {
+                    bgcolor: "warning.dark",
+                  },
+                }}
               >
                 View Analytics
               </Button>
             }
           >
-            {inactiveCustomers.length} customers haven't visited in 2 weeks.
-            Consider reaching out to them!
+            {inactiveCustomers.length} customer
+            {inactiveCustomers.length > 1 ? "s" : ""} haven't visited in 2
+            weeks. Consider reaching out!
           </Alert>
         )}
 

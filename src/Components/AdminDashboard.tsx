@@ -41,6 +41,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Pagination,
 } from "@mui/material";
 import {
   Edit as EditIcon,
@@ -63,6 +64,8 @@ import {
   Star as StarIcon,
   TrendingUp as TrendingUpIcon,
   Delete as DeleteIcon,
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
 } from "@mui/icons-material";
 import {
   collection,
@@ -340,6 +343,14 @@ const AdminDashboard: React.FC = () => {
   }, [workers, workerSearchTerm]);
 
   // Prepare chart data
+  // Filter inactive customers by search term for analytics tab
+  const filteredCustomers = useMemo(() => {
+    if (!searchTerm) return inactiveCustomers;
+    return inactiveCustomers.filter((customer) =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [inactiveCustomers, searchTerm]);
+
   const monthlySalesData = {
     labels: Object.keys(salesAnalytics.monthlySales),
     datasets: [
@@ -736,130 +747,100 @@ const AdminDashboard: React.FC = () => {
               sx={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 2,
-                mb: 3,
+                gap: 3, // Increased gap for better spacing
+                mb: 4, // Slightly more margin-bottom for breathing room
                 "& > *": {
-                  flex: "1 1 150px",
-                  minWidth: "150px",
+                  flex: "1 1 200px", // Increased min card width for better proportions
+                  minWidth: "200px",
                 },
               }}
             >
-              <Card
-                sx={{
-                  borderLeft: `4px solid ${theme.palette.primary.main}`,
-                  boxShadow: theme.shadows[1],
-                }}
-              >
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Avatar
-                      sx={{
-                        bgcolor: theme.palette.primary.light,
-                        color: theme.palette.primary.main,
-                        width: 36,
-                        height: 36,
-                      }}
-                    >
-                      <CustomersIcon fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Total Customers
-                      </Typography>
-                      <Typography variant="h6" fontWeight="bold">
-                        {totalCustomers}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-              <Card
-                sx={{
-                  borderLeft: `4px solid ${theme.palette.success.main}`,
-                  boxShadow: theme.shadows[1],
-                }}
-              >
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Avatar
-                      sx={{
-                        bgcolor: theme.palette.success.light,
-                        color: theme.palette.success.main,
-                        width: 36,
-                        height: 36,
-                      }}
-                    >
-                      <SalesIcon fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Total Sales
-                      </Typography>
-                      <Typography variant="h6" fontWeight="bold">
-                        ${totalSales.toLocaleString()}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-              <Card
-                sx={{
-                  borderLeft: `4px solid ${theme.palette.warning.main}`,
-                  boxShadow: theme.shadows[1],
-                }}
-              >
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Avatar
-                      sx={{
-                        bgcolor: theme.palette.warning.light,
-                        color: theme.palette.warning.main,
-                        width: 36,
-                        height: 36,
-                      }}
-                    >
-                      <PaymentIcon fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Worker Payments
-                      </Typography>
-                      <Typography variant="h6" fontWeight="bold">
-                        ${totalWorkerPayments.toFixed(2)}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-              <Card
-                sx={{
-                  borderLeft: `4px solid ${theme.palette.info.main}`,
-                  boxShadow: theme.shadows[1],
-                }}
-              >
-                <CardContent>
-                  <Stack direction="row" alignItems="center" spacing={1}>
-                    <Avatar
-                      sx={{
-                        bgcolor: theme.palette.info.light,
-                        color: theme.palette.info.main,
-                        width: 36,
-                        height: 36,
-                      }}
-                    >
-                      <CompletedIcon fontSize="small" />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Completed
-                      </Typography>
-                      <Typography variant="h6" fontWeight="bold">
-                        {completedServices}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
+              {(
+                [
+                  {
+                    title: "Total Customers",
+                    value: totalCustomers,
+                    icon: <CustomersIcon fontSize="small" />,
+                    color: "primary",
+                  },
+                  {
+                    title: "Total Sales",
+                    value: `$${totalSales.toLocaleString()}`,
+                    icon: <SalesIcon fontSize="small" />,
+                    color: "success",
+                  },
+                  {
+                    title: "Worker Payments",
+                    value: `$${totalWorkerPayments.toFixed(2)}`,
+                    icon: <PaymentIcon fontSize="small" />,
+                    color: "warning",
+                  },
+                  {
+                    title: "Completed",
+                    value: completedServices,
+                    icon: <CompletedIcon fontSize="small" />,
+                    color: "info",
+                  },
+                ] as const
+              ).map((item, index) => (
+                <Card
+                  key={index}
+                  sx={{
+                    borderRadius: 2, // Rounded corners for a softer look
+                    borderLeft: `5px solid ${
+                      theme.palette[
+                        item.color as "primary" | "success" | "warning" | "info"
+                      ].main
+                    }`, // Slightly thicker border
+                    boxShadow: theme.shadows[3], // More pronounced shadow for depth
+                    transition:
+                      "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out", // Smooth hover animation
+                    "&:hover": {
+                      transform: "translateY(-4px)", // Subtle lift effect on hover
+                      boxShadow: theme.shadows[6], // Stronger shadow on hover
+                    },
+                    bgcolor: theme.palette.background.paper, // Ensure consistent background
+                  }}
+                >
+                  <CardContent sx={{ padding: 2.5 }}>
+                    {" "}
+                    {/* Adjusted padding for compactness */}
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      {" "}
+                      {/* Slightly more spacing */}
+                      <Avatar
+                        sx={{
+                          bgcolor: theme.palette[item.color].light,
+                          color: theme.palette[item.color].main,
+                          width: 40, // Slightly larger avatar
+                          height: 40,
+                          boxShadow: `0 0 8px ${
+                            theme.palette[item.color].light
+                          }`, // Glow effect
+                        }}
+                      >
+                        {item.icon}
+                      </Avatar>
+                      <Box>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ fontSize: "0.85rem", fontWeight: 500 }} // Slightly larger and bolder caption
+                        >
+                          {item.title}
+                        </Typography>
+                        <Typography
+                          variant="h5" // Larger text for emphasis
+                          fontWeight="bold"
+                          color={theme.palette[item.color].dark} // Darker shade for contrast
+                        >
+                          {item.value}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ))}
             </Box>
 
             {/* Table Section */}
@@ -1475,21 +1456,90 @@ const AdminDashboard: React.FC = () => {
             </Paper>
 
             {/* Customer Retention Section */}
-            <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                <NotificationsIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-                Customer Retention (Haven't Visited in 2 Weeks)
-              </Typography>
+            <Paper
+              elevation={3}
+              sx={{
+                p: 3,
+                mb: 4,
+                borderRadius: 2,
+                bgcolor: "background.paper",
+                transition: "box-shadow 0.3s ease-in-out",
+                "&:hover": {
+                  boxShadow: (theme) => theme.shadows[6],
+                },
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+                <NotificationsIcon
+                  sx={{ fontSize: 28, color: "primary.main", mr: 1.5 }}
+                />
+                <Typography
+                  variant="h5"
+                  sx={{ fontWeight: 600, color: "text.primary" }}
+                >
+                  Customer Retention
+                </Typography>
+              </Box>
+
               {inactiveCustomers.length > 0 ? (
                 <>
-                  <Typography color="text.secondary" sx={{ mb: 2 }}>
-                    {inactiveCustomers.length} customers haven't visited in 2
-                    weeks or more.
-                  </Typography>
-                  <TableContainer>
-                    <Table size={isMobile ? "small" : "medium"}>
+                  <Box sx={{ mb: 3 }}>
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        color: "text.secondary",
+                        mb: 2,
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {inactiveCustomers.length} customer
+                      {inactiveCustomers.length > 1 ? "s" : ""} haven't visited
+                      in 2 weeks or more.
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      variant="outlined"
+                      placeholder="Search customers by name..."
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setPage(0);
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: "text.secondary" }} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{
+                        maxWidth: 400,
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1.5,
+                          bgcolor: "grey.50",
+                        },
+                      }}
+                    />
+                  </Box>
+                  <TableContainer
+                    sx={{
+                      borderRadius: 1.5,
+                      bgcolor: "grey.50",
+                      transition: "transform 0.2s ease-in-out",
+                      "&:hover": { transform: "translateY(-4px)" },
+                    }}
+                  >
+                    <Table
+                      size={isMobile ? "small" : "medium"}
+                      sx={{ minWidth: isMobile ? "auto" : 650 }}
+                    >
                       <TableHead>
-                        <TableRow>
+                        <TableRow
+                          sx={{
+                            bgcolor: "primary.light",
+                            "& th": { fontWeight: 600, color: "text.primary" },
+                          }}
+                        >
                           <TableCell>Customer Name</TableCell>
                           <TableCell>Phone Number</TableCell>
                           {!isMobile && <TableCell>Last Visit</TableCell>}
@@ -1498,121 +1548,355 @@ const AdminDashboard: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {inactiveCustomers.map((customer, index) => {
-                          const daysSinceVisit = Math.floor(
-                            (new Date().getTime() -
-                              customer.lastVisit.getTime()) /
-                              (1000 * 60 * 60 * 24)
-                          );
+                        {filteredCustomers
+                          .slice(
+                            page * rowsPerPage,
+                            page * rowsPerPage + rowsPerPage
+                          )
+                          .map((customer, index) => {
+                            const daysSinceVisit = Math.floor(
+                              (new Date().getTime() -
+                                customer.lastVisit.getTime()) /
+                                (1000 * 60 * 60 * 24)
+                            );
 
-                          return (
-                            <TableRow key={index}>
-                              <TableCell>{customer.name}</TableCell>
-                              <TableCell>
-                                {isMobile
-                                  ? `${customer.phone.substring(0, 4)}...`
-                                  : customer.phone}
-                              </TableCell>
-                              {!isMobile && (
-                                <TableCell>
-                                  {customer.lastVisit.toLocaleDateString()}
+                            return (
+                              <TableRow
+                                key={index}
+                                sx={{
+                                  "&:hover": { bgcolor: "action.hover" },
+                                  transition:
+                                    "background-color 0.2s ease-in-out",
+                                }}
+                              >
+                                <TableCell sx={{ fontWeight: 500 }}>
+                                  {customer.name}
                                 </TableCell>
-                              )}
-                              {!isMobile && (
-                                <TableCell>{daysSinceVisit} days</TableCell>
-                              )}
-                              <TableCell>{customer.totalVisits}</TableCell>
-                            </TableRow>
-                          );
-                        })}
+                                <TableCell>
+                                  {isMobile
+                                    ? `${customer.phone.substring(0, 4)}...`
+                                    : customer.phone}
+                                </TableCell>
+                                {!isMobile && (
+                                  <TableCell>
+                                    {customer.lastVisit.toLocaleDateString(
+                                      "en-US",
+                                      {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      }
+                                    )}
+                                  </TableCell>
+                                )}
+                                {!isMobile && (
+                                  <TableCell>
+                                    <Box
+                                      sx={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        color:
+                                          daysSinceVisit > 30
+                                            ? "error.main"
+                                            : "warning.main",
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      {daysSinceVisit} days
+                                      {daysSinceVisit > 30 && (
+                                        <WarningIcon
+                                          sx={{ ml: 1, fontSize: 16 }}
+                                        />
+                                      )}
+                                    </Box>
+                                  </TableCell>
+                                )}
+                                <TableCell>{customer.totalVisits}</TableCell>
+                              </TableRow>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   </TableContainer>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}
+                  >
+                    {isMobile ? (
+                      <Pagination
+                        count={Math.ceil(
+                          filteredCustomers.length / rowsPerPage
+                        )}
+                        page={page + 1}
+                        onChange={(_e, value) => value && setPage(value - 1)}
+                        color="primary"
+                        size="small"
+                        sx={{
+                          "& .MuiPaginationItem-root": {
+                            fontSize: isMobile ? "0.75rem" : "0.875rem",
+                          },
+                        }}
+                      />
+                    ) : (
+                      <TablePagination
+                        component="div"
+                        count={filteredCustomers.length}
+                        page={page}
+                        onPageChange={(_e, newPage) => setPage(newPage)}
+                        rowsPerPage={rowsPerPage}
+                        onRowsPerPageChange={(e) => {
+                          setRowsPerPage(parseInt(e.target.value, 10));
+                          setPage(0);
+                        }}
+                        rowsPerPageOptions={[5, 10, 25]}
+                        labelRowsPerPage={isMobile ? "Rows" : "Rows per page"}
+                        sx={{
+                          "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows":
+                            { fontSize: isMobile ? "0.75rem" : "0.875rem" },
+                        }}
+                      />
+                    )}
+                  </Box>
                 </>
               ) : (
-                <Typography color="text.secondary">
-                  All customers have visited recently. Great job!
-                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    py: 4,
+                    gap: 1.5,
+                  }}
+                >
+                  <CheckCircleIcon
+                    sx={{ color: "success.main", fontSize: 24 }}
+                  />
+                  <Typography
+                    variant="body1"
+                    sx={{ color: "text.secondary", textAlign: "center" }}
+                  >
+                    All customers have visited recently. Great job!
+                  </Typography>
+                </Box>
               )}
             </Paper>
 
             {/* Sales Analytics Section */}
-            <Paper elevation={2} sx={{ p: 2, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                <BarChartIcon sx={{ verticalAlign: "middle", mr: 1 }} />
-                Sales Analytics
-              </Typography>
+            <Paper
+              elevation={3}
+              sx={{
+                p: 3,
+                mb: 4,
+                borderRadius: 2,
+                bgcolor: "background.paper",
+                transition: "box-shadow 0.3s ease-in-out",
+                "&:hover": {
+                  boxShadow: (theme) => theme.shadows[6],
+                },
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+                <BarChartIcon
+                  sx={{ fontSize: 28, color: "primary.main", mr: 1.5 }}
+                />
+                <Typography
+                  variant="h5"
+                  sx={{ fontWeight: 600, color: "text.primary" }}
+                >
+                  Sales Analytics
+                </Typography>
+              </Box>
 
               {customerEntries.length === 0 ? (
-                <Typography color="text.secondary">
-                  Not enough data yet to show analytics.
+                <Typography
+                  variant="body1"
+                  sx={{ color: "text.secondary", textAlign: "center", py: 4 }}
+                >
+                  No data available to display analytics yet.
                 </Typography>
               ) : (
-                <Box>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" gutterBottom>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {/* Monthly Sales */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: 1.5,
+                      bgcolor: "grey.50",
+                      transition: "transform 0.2s ease-in-out",
+                      "&:hover": { transform: "translateY(-4px)" },
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: 500, mb: 2, color: "text.primary" }}
+                    >
                       Monthly Sales
                     </Typography>
-                    <Box sx={{ height: 250 }}>
+                    <Box sx={{ height: 280, position: "relative" }}>
                       <Bar
-                        data={monthlySalesData}
+                        data={{
+                          ...monthlySalesData,
+                          datasets: monthlySalesData.datasets.map(
+                            (dataset) => ({
+                              ...dataset,
+                              backgroundColor: "rgba(63, 81, 181, 0.7)",
+                              borderColor: "rgba(63, 81, 181, 1)",
+                              borderWidth: 1,
+                              borderRadius: 4,
+                            })
+                          ),
+                        }}
                         options={{
                           responsive: true,
                           maintainAspectRatio: false,
                           plugins: {
                             legend: {
-                              labels: {
-                                font: {
-                                  size: isMobile ? 10 : 12,
-                                },
-                              },
+                              display: false,
+                            },
+                            tooltip: {
+                              backgroundColor: "rgba(0, 0, 0, 0.8)",
+                              titleFont: { size: 14 },
+                              bodyFont: { size: 12 },
+                            },
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              grid: { color: "rgba(0, 0, 0, 0.05)" },
+                              ticks: { font: { size: isMobile ? 10 : 12 } },
+                            },
+                            x: {
+                              grid: { display: false },
+                              ticks: { font: { size: isMobile ? 10 : 12 } },
                             },
                           },
                         }}
                       />
                     </Box>
                   </Box>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" gutterBottom>
+
+                  {/* Service Popularity */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: 1.5,
+                      bgcolor: "grey.50",
+                      transition: "transform 0.2s ease-in-out",
+                      "&:hover": { transform: "translateY(-4px)" },
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: 500, mb: 2, color: "text.primary" }}
+                    >
                       Service Popularity
                     </Typography>
-                    <Box sx={{ height: 250 }}>
-                      <Pie
-                        data={servicePopularityData}
-                        options={{
-                          responsive: true,
-                          maintainAspectRatio: false,
-                          plugins: {
-                            legend: {
-                              position: isMobile ? "bottom" : "right",
-                              labels: {
-                                font: {
-                                  size: isMobile ? 10 : 12,
+                    <Box
+                      sx={{
+                        height: 280,
+                        display: "flex",
+                        justifyContent: isMobile ? "center" : "flex-start",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: isMobile ? "100%" : "60%",
+                          position: "relative",
+                        }}
+                      >
+                        <Pie
+                          data={{
+                            ...servicePopularityData,
+                            datasets: servicePopularityData.datasets.map(
+                              (dataset) => ({
+                                ...dataset,
+                                backgroundColor: [
+                                  "#3F51B5",
+                                  "#F44336",
+                                  "#4CAF50",
+                                  "#FF9800",
+                                  "#9C27B0",
+                                ],
+                                borderColor: "#fff",
+                                borderWidth: 2,
+                              })
+                            ),
+                          }}
+                          options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                              legend: {
+                                position: isMobile ? "bottom" : "right",
+                                labels: {
+                                  font: { size: isMobile ? 10 : 12 },
+                                  padding: 15,
+                                  usePointStyle: true,
                                 },
+                              },
+                              tooltip: {
+                                backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 12 },
                               },
                             },
-                          },
-                        }}
-                      />
+                          }}
+                        />
+                      </Box>
                     </Box>
                   </Box>
-                  <Box>
-                    <Typography variant="subtitle1" gutterBottom>
+
+                  {/* Sales by Day of Week */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      borderRadius: 1.5,
+                      bgcolor: "grey.50",
+                      transition: "transform 0.2s ease-in-out",
+                      "&:hover": { transform: "translateY(-4px)" },
+                    }}
+                  >
+                    <Typography
+                      variant="subtitle1"
+                      sx={{ fontWeight: 500, mb: 2, color: "text.primary" }}
+                    >
                       Sales by Day of Week
                     </Typography>
-                    <Box sx={{ height: 250 }}>
+                    <Box sx={{ height: 280, position: "relative" }}>
                       <Bar
-                        data={dayOfWeekSalesData}
+                        data={{
+                          ...dayOfWeekSalesData,
+                          datasets: dayOfWeekSalesData.datasets.map(
+                            (dataset) => ({
+                              ...dataset,
+                              backgroundColor: "rgba(76, 175, 80, 0.7)",
+                              borderColor: "rgba(76, 175, 80, 1)",
+                              borderWidth: 1,
+                              borderRadius: 4,
+                            })
+                          ),
+                        }}
                         options={{
                           responsive: true,
                           maintainAspectRatio: false,
                           plugins: {
                             legend: {
-                              labels: {
-                                font: {
-                                  size: isMobile ? 10 : 12,
-                                },
-                              },
+                              display: false,
+                            },
+                            tooltip: {
+                              backgroundColor: "rgba(0, 0, 0, 0.8)",
+                              titleFont: { size: 14 },
+                              bodyFont: { size: 12 },
+                            },
+                          },
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              grid: { color: "rgba(0, 0, 0, 0.05)" },
+                              ticks: { font: { size: isMobile ? 10 : 12 } },
+                            },
+                            x: {
+                              grid: { display: false },
+                              ticks: { font: { size: isMobile ? 10 : 12 } },
                             },
                           },
                         }}
